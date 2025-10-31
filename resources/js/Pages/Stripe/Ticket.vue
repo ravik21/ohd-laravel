@@ -96,6 +96,8 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { loadStripe } from "@stripe/stripe-js";
+import { router } from '@inertiajs/vue3'
+
 import topImage from "~/images/top.jpg";
 import Swal from 'sweetalert2'
 
@@ -182,6 +184,13 @@ function validateForm() {
 const handleFormSubmit = async () => {
     if (!validateForm()) return;
 
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+    if (!emailPattern.test(form.value.email)) {
+        alert('Please enter a valid email address.')
+        return
+    }
+
     loading.value = true;
     errors.value.card = null;
 
@@ -202,13 +211,66 @@ const handleFormSubmit = async () => {
             return;
         }
 
-        
+        // ✅ Step 1: Create or update customer
+        const customerResponse = await axios.post(route('ticket.stripe.create-customer'), {
+            ticket_num: form.value.ticket_num,
+            ticket_id: form.value.ticket_id,
+            amount: form.value.amount * 100,
+            name: `Ticket ${props.ticket.ticket_num}`,
+            email: form.value.email,
+            phone: form.value.phone,
+            address: props.ticket.address,
+            shipping: props.ticket.shipping,
+        });
+
+        const customer = customerResponse.data
+        if (customer.error) throw new Error(customer.error);
+
+        // ✅ Step 2: Create payment method via Stripe
+        const paymentMethodResult = await stripe.createPaymentMethod({
+            type: 'card',
+            card: card.value,
+            billing_details: { name: form.value.name },
+        });
+
+        if (paymentMethodResult.error) throw new Error(paymentMethodResult.error.message);
+
+        // ✅ Step 3: Attach payment method to customer
+        const attachResponse = await axios.post(route('ticket.stripe.attach-payment-method-to-customer'), {
+            customerId: customer.id,
+            paymentMethodId: paymentMethodResult.paymentMethod.id,
+        });
+
+        if (attachResponse.data.error) throw new Error(attachResponse.data.error)
+
+        // ✅ Step 4: Create payment intent
+        const intentResponse = await axios.post(route('ticket.stripe.create-payment-intent'), {
+            customer_id: customer.id,
+            amount: amountValue,
+            payment_method_id: paymentMethodResult.paymentMethod.id,
+        });
+
+        const paymentIntent = intentResponse.data
+        if (paymentIntent.error) throw new Error(paymentIntent.error)
+
+        // ✅ Step 5: Confirm payment
+        const confirmResult = await stripe.confirmCardPayment(paymentIntent.client_secret, {
+            payment_method: paymentMethodResult.paymentMethod.id,
+        });
+
+        if (confirmResult.error) {
+            router.get(`/ticket/${form.value.ticket_id}/payment-cancel`)
+        } else {
+            router.get(`/ticket/${form.value.ticket_id}/payment-success`, {
+                payment_intent: paymentIntent.id,
+                customer: customer.id,
+            })
+        }
     } catch (err) {
-        console.error("Payment failed:", err);
         Swal.fire({
             title: 'Opps!',
-            text: "Something went wrong while processing payment.",
-            icon: "error",
+            text: err.message || 'Something went wrong while processing payment.',
+            icon: 'error',
         });
     } finally {
         loading.value = false;

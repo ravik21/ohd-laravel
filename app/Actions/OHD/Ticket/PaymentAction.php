@@ -8,7 +8,7 @@ use App\Models\OHD\Ticket;
 
 use Carbon\Carbon;
 
-class Payment
+class PaymentAction
 {
     protected $dbConnection = 'ohdmysql';
 
