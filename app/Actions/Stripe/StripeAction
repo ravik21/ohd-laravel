@@ -1,0 +1,21 @@
+<?php
+
+namespace App\Actions\Stripe;
+
+class StripeAction
+{
+    protected $publicKey = 'EAA1xMd70HWUBPzZCM7zfm03dUiGn5jK69MjPIK37CC2cJkjvQhi3qdcnAvqJiZCa2z0mOqeMZBaFcGyxHXnvQRMxBBhWIFIpelgn8OG9wI00JWhLtmO1wkT5KaSMVteDpXKDV2llOaING9kJ4QVuLZA4OpZBM4mG4B9edeXY5wEQUUdGuGZCaHL9bLfoCNoxpjwgZDZD';
+
+    protected $secretKey;
+
+    public function __construct()
+    {
+        $this->publicKey = env('STRIPE_PUBLIC_KEY');
+        $this->secretKey = env('STRIPE_SECRET_KEY');
+    }
+
+    public function createCustomer()
+    {
+
+    }
+}
