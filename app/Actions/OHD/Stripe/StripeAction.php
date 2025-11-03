@@ -5,6 +5,7 @@ namespace App\Actions\OHD\Stripe;
 use Stripe\Stripe;
 use Stripe\Customer;
 use Stripe\PaymentIntent;
+use Stripe\PaymentMethod;
 
 class StripeAction
 {
@@ -17,21 +18,42 @@ class StripeAction
         if ($validation['success']) {
             $customerId = $this->checkIfCustomerExists($payload);
 
-            if ($customerId) {
-                return Customer::update($customerId, $payload);
-            } else {
-                return Customer::create($payload);
+            $customerPayload = $this->filterCustomerStripePayload($payload);
+
+            try {
+                if ($customerId) {
+                    return Customer::update($customerId, $customerPayload);
+                } else {
+                    return Customer::create($customerPayload);
+                }
+            } catch (\Exception $e) {
+                return ['error' => $e->getMessage(), 'code' => 400, 'success' => false];
             }
         } else {
             return $validation;
         }
     }
 
-    public function attachPaymentMethodToCustomer($customerId, $paymentMethod)
+    public function attachPaymentMethodToCustomer($customerId, $paymentMethodId)
     {
-        Stripe::setApiKey(config('cashier.secret'));
+        try {
+            Stripe::setApiKey(config('cashier.secret'));
 
-        return Customer::update($customerId, ['payment_method' => $paymentMethod]);
+            // Attach the payment method to the customer
+            $attachedPaymentMethod = PaymentMethod::retrieve($paymentMethodId);
+            $attachedPaymentMethod->attach(['customer' => $customerId]);
+
+            // Optionally set as default payment method
+            Customer::update($customerId, [
+                'invoice_settings' => [
+                    'default_payment_method' => $paymentMethodId,
+                ],
+            ]);
+
+            return $attachedPaymentMethod;
+        } catch (\Exception $e) {
+            return ['error' => $e->getMessage(), 'code' => 400, 'success' => false];
+        }
     }
 
     public function createPaymentIntent($payload)
@@ -54,6 +76,13 @@ class StripeAction
             'payment_method_types' => ['card'],
             'capture_method' => 'manual',
         ]);
+    }
+
+    public function retrievePaymentMethod($paymentMethodId)
+    {
+        Stripe::setApiKey(config('cashier.secret'));
+
+        return PaymentMethod::retrieve($paymentMethodId);
     }
 
     protected function validatePayload($payload)
@@ -79,6 +108,60 @@ class StripeAction
 
         $query = 'email:"' . $payload['email'] . '" AND metadata[\'ticket_num\']:"' . $payload['ticket_num'] . '"';
 
-        return Customer::search($query);
+        $search = Customer::search([
+            'query' => $query,
+        ]);
+
+        if (!empty($search->data) && isset($search->data[0]->id)) {
+            return $search->data[0]->id;
+        }
+
+        return false;
+    }
+
+    protected function filterCustomerStripePayload($payload)
+    {
+        $filteredPayload = [
+            'email' => $payload['email'],
+            'name' => $payload['name'],
+            'phone' => $payload['phone'],
+            'metadata' => [
+                'ticket_id' => $payload['ticket_id'],
+                'ticket_num' => $payload['ticket_num'],
+            ],
+        ];
+
+        // Optional address fields
+        if (!empty($payload['address']) && is_array($payload['address'])) {
+            foreach ($payload['address'] as $key => $value) {
+                if (!empty($value)) {
+                    $filteredPayload['address'][$key] = $value;
+                }
+            }
+        }
+
+        // Optional shipping fields
+        if (!empty($payload['shipping']) && is_array($payload['shipping'])) {
+            if (!empty($payload['shipping']['name'])) {
+                $filteredPayload['shipping']['name'] = $payload['shipping']['name'];
+            }
+
+            if (!empty($payload['shipping']['address']) && is_array($payload['shipping']['address'])) {
+                foreach ($payload['shipping']['address'] as $key => $value) {
+                    if (!empty($value)) {
+                        $filteredPayload['shipping']['address'][$key] = $value;
+                    }
+                }
+            }
+
+            // Remove shipping if address is not set or is empty
+            if (isset($filteredPayload['shipping']) && !isset($filteredPayload['shipping']['address'])) {
+                unset($filteredPayload['shipping']);
+            } elseif (isset($filteredPayload['shipping']['address']) && !count($filteredPayload['shipping']['address'])) {
+                unset($filteredPayload['shipping']);
+            }
+        }
+
+        return $filteredPayload;
     }
 }

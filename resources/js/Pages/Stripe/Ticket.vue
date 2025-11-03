@@ -88,7 +88,6 @@
                     </form>
                 </div>
             </div>
-
         </div>
     </div>
 </template>
@@ -229,16 +228,20 @@ const handleFormSubmit = async () => {
         // ✅ Step 2: Create payment method via Stripe
         const paymentMethodResult = await stripe.createPaymentMethod({
             type: 'card',
-            card: card.value,
-            billing_details: { name: form.value.name },
+            card: card,
+            billing_details: {
+                name: form.value.name,
+                email: form.value.email,
+                phone: form.value.phone,
+            },
         });
 
         if (paymentMethodResult.error) throw new Error(paymentMethodResult.error.message);
 
         // ✅ Step 3: Attach payment method to customer
         const attachResponse = await axios.post(route('ticket.stripe.attach-payment-method-to-customer'), {
-            customerId: customer.id,
-            paymentMethodId: paymentMethodResult.paymentMethod.id,
+            customer_id: customer.id,
+            payment_method_id: paymentMethodResult.paymentMethod.id,
         });
 
         if (attachResponse.data.error) throw new Error(attachResponse.data.error)
@@ -246,7 +249,7 @@ const handleFormSubmit = async () => {
         // ✅ Step 4: Create payment intent
         const intentResponse = await axios.post(route('ticket.stripe.create-payment-intent'), {
             customer_id: customer.id,
-            amount: amountValue,
+            amount: form.value.amount,
             payment_method_id: paymentMethodResult.paymentMethod.id,
         });
 

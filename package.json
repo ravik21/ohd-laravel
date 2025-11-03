@@ -19,6 +19,7 @@
         "@stripe/stripe-js": "^8.1.0",
         "@vitejs/plugin-vue": "^6.0.1",
         "sweetalert2": "^11.26.3",
-        "vue": "^3.5.22"
+        "vue": "^3.5.22",
+        "ziggy-js": "^2.6.0"
     }
 }
