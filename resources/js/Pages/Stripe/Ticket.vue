@@ -211,7 +211,7 @@ const handleFormSubmit = async () => {
         }
 
         // ✅ Step 1: Create or update customer
-        const customerResponse = await axios.post(route('ticket.stripe.create-customer'), {
+        const customerResponse = await axios.post(route('stripe.create-customer'), {
             ticket_num: form.value.ticket_num,
             ticket_id: form.value.ticket_id,
             amount: form.value.amount * 100,
@@ -239,7 +239,7 @@ const handleFormSubmit = async () => {
         if (paymentMethodResult.error) throw new Error(paymentMethodResult.error.message);
 
         // ✅ Step 3: Attach payment method to customer
-        const attachResponse = await axios.post(route('ticket.stripe.attach-payment-method-to-customer'), {
+        const attachResponse = await axios.post(route('stripe.attach-payment-method-to-customer'), {
             customer_id: customer.id,
             payment_method_id: paymentMethodResult.paymentMethod.id,
         });
@@ -247,7 +247,7 @@ const handleFormSubmit = async () => {
         if (attachResponse.data.error) throw new Error(attachResponse.data.error)
 
         // ✅ Step 4: Create payment intent
-        const intentResponse = await axios.post(route('ticket.stripe.create-payment-intent'), {
+        const intentResponse = await axios.post(route('stripe.create-payment-intent'), {
             customer_id: customer.id,
             amount: form.value.amount,
             payment_method_id: paymentMethodResult.paymentMethod.id,
@@ -264,10 +264,7 @@ const handleFormSubmit = async () => {
         if (confirmResult.error) {
             router.get(`/ticket/${form.value.ticket_id}/payment-cancel`)
         } else {
-            router.get(`/ticket/${form.value.ticket_id}/payment-success`, {
-                payment_intent: paymentIntent.id,
-                customer: customer.id,
-            })
+            window.location = `${import.meta.env.VITE_OHD_BASE_URL}/_tmp/stripe-success.php?payment_intent=${paymentIntent.id}&payment_method=${confirmResult.paymentIntent.payment_method}&client_secret=${confirmResult.paymentIntent.client_secret}&customer=${customer.id}&ticket_id=${form.value.ticket_id}`
         }
     } catch (err) {
         Swal.fire({
