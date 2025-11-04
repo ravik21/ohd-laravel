@@ -41,4 +41,11 @@ class StripeController extends Controller
 
         return response()->json($response, isset($response['error']) ? 422 : 200);
     }
+
+    public function capturePayment(Request $request, $paymentIntentId)
+    {
+        $response = (new StripeAction)->capturePayment($paymentIntentId, $request->all());
+
+        return response()->json($response, isset($response['error']) ? 422 : 200);
+    }
 }

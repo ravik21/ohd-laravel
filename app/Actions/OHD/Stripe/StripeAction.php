@@ -85,6 +85,21 @@ class StripeAction
         return PaymentMethod::retrieve($paymentMethodId);
     }
 
+    public function capturePayment($paymentIntentId, $payload)
+    {
+        Stripe::setApiKey(config('cashier.secret'));
+
+        if (empty($payload['amount_to_capture'])) {
+            return ['error' => "Missing required field: amount", 'code' => 400, 'success' => false];
+        }
+
+        if (!is_numeric($payload['amount_to_capture']) || intval($payload['amount_to_capture']) <= 0) {
+            return ['error' => "Amount must be a positive number.", 'code' => 400, 'success' => false];
+        }
+
+        return PaymentIntent::retrieve($paymentIntentId)->capture($payload);
+    }
+
     protected function validatePayload($payload)
     {
         $requiredFields = ['name', 'email', 'ticket_id', 'ticket_num'];
