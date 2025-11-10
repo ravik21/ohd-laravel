@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\OHD;
 
+use App\Actions\OHD\Stripe\StripeAction;
 use Illuminate\Http\Request;
 
 use App\Http\Controllers\Controller;
@@ -30,5 +31,23 @@ class TicketController extends Controller
     public function paymentCancel()
     {
         return Inertia::render('Stripe/Cancel');
+    }
+
+    public function payTerminal(Request $request, $ticketId)
+    {
+        $ticket       = (new PaymentAction)->execute($ticketId);
+        $amount       = (new PaymentAction)->amount($ticketId);
+        $repairItems  = (new PaymentAction)->repairItems($ticketId);
+
+        $ticket['amount'] = $amount;
+
+        $customer     = (new StripeAction)->createOrUpdateCustomer($ticket);
+
+        return Inertia::render('Stripe/Terminal', [
+          'ticketId' => $ticket['ticket_id'],
+          'amount' => $amount,
+          'customerId' => $customer['id'] ?? null,
+          'repairItems' => $repairItems
+        ]);
     }
 }

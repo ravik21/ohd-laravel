@@ -1,101 +1,8 @@
-<template>
-    <div class="checkout-wrapper">
-        <div class="checkout-container row">
-            <img :src="topImage" alt="Logo" class="img-fluid" />
-            <!-- LEFT COLUMN — ORDER SUMMARY -->
-            <div class="col-lg-6 col-md-12 summary-section d-flex flex-column justify-content-top">
-                <div class="summary-content mx-auto w-100 px-2 px-md-5 py-4">
-                    <h4 class="fw-bold mb-4 text-center text-md-start">Order Summary</h4>
-
-                    <table class="table table-borderless align-middle">
-                        <thead>
-                            <tr>
-                                <th>Items</th>
-                                <th>Price</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="(item, i) of repairItems" :key="i">
-                                <td>{{ item.item }}</td>
-                                <td>${{ item.maximum_charge }}</td>
-                            </tr>
-                        </tbody>
-
-                    </table>
-
-                    <hr class="my-4" />
-
-                    <div class="d-flex justify-content-between">
-                        <span class="fw-bold fs-5">Total</span>
-                        <span class="fw-bold fs-5">${{ form.amount }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- RIGHT COLUMN — PAYMENT FORM -->
-            <div class="col-lg-6 col-md-12 payment-section d-flex align-items-center justify-content-center">
-                <div class="payment-form w-100 px-2 px-md-5 py-4">
-                    <div class="text-center mb-4">
-                        <h4 class="fw-bold">Secure Payment</h4>
-                    </div>
-
-                    <form @submit.prevent="handleFormSubmit" novalidate>
-                        <!-- Full Name -->
-                        <div class="mb-3">
-                            <label for="billing-name" class="form-label fw-semibold">Full Name</label>
-                            <input v-model.trim="form.name" type="text" id="billing-name" class="form-control"
-                                :class="{ 'is-invalid': errors.name }" />
-                            <div v-if="errors.name" class="invalid-feedback">{{ errors.name }}</div>
-                        </div>
-
-                        <!-- Email -->
-                        <div class="mb-3">
-                            <label for="billing-email" class="form-label fw-semibold">Email</label>
-                            <input v-model.trim="form.email" type="email" id="billing-email" class="form-control"
-                                :class="{ 'is-invalid': errors.email }" />
-                            <div v-if="errors.email" class="invalid-feedback">{{ errors.email }}</div>
-                        </div>
-
-                        <!-- Phone -->
-                        <div class="mb-3">
-                            <label for="billing-phone" class="form-label fw-semibold">Phone</label>
-                            <input v-model.trim="form.phone" type="text" id="billing-phone" class="form-control"
-                                :class="{ 'is-invalid': errors.phone }" />
-                            <div v-if="errors.phone" class="invalid-feedback">{{ errors.phone }}</div>
-                        </div>
-
-                        <!-- Card -->
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Card Details</label>
-                            <div id="card-element" class="form-control p-2"
-                                :class="{ 'is-invalid': errors.card || errors.amount }">
-                            </div>
-                            <div v-if="errors.card" class="text-danger mt-1 small">{{ errors.card }}</div>
-                            <div v-if="errors.amount" class="text-danger mt-1 small">{{ errors.amount }}</div>
-                        </div>
-
-                        <div class="d-flex gap-2 mt-4">
-                            <button type="button" @click="handleCancel" class="btn btn-outline-secondary w-50">
-                                Cancel
-                            </button>
-                            <button type="submit"
-                                class="btn btn-primary w-50 d-flex align-items-center justify-content-center"
-                                :disabled="loading">
-                                <div v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></div>
-                                <span>{{ loading ? "Processing..." : "Confirm Payment" }}</span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</template>
-
 <script setup>
 import { onMounted, ref } from "vue";
 import { loadStripe } from "@stripe/stripe-js";
 import { router } from '@inertiajs/vue3'
+import { Head } from '@inertiajs/vue3'
 
 import topImage from "~/images/top.jpg";
 import Swal from 'sweetalert2'
@@ -307,110 +214,185 @@ const handleCancel = async () => {
 };
 </script>
 
+<template>
+    <Head title="Secure Payment" />
+    <div class="checkout-wrapper">
+        <div class="checkout-card row shadow-lg rounded-4 overflow-hidden">
+            
+            <!-- LEFT — Order Summary -->
+            <div class="col-lg-6 col-md-12 summary-section p-5">
+                <div class="summary-content">
+                    <img :src="topImage" alt="Logo" class="img-fluid mb-4" />
+                    <h3 class="fw-semibold mb-4 text-dark">🧾 Order Summary</h3>
+
+                    <table class="table table-borderless align-middle mb-4">
+                        <thead class="text-muted border-bottom">
+                            <tr>
+                                <th>Item</th>
+                                <th class="text-end">Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(item, i) in repairItems" :key="i">
+                                <td>{{ item.item }}</td>
+                                <td class="text-end">${{ item.maximum_charge }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <hr class="my-3" />
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold fs-5 text-dark">Total</span>
+                        <span class="fw-bold fs-4 text-primary">${{ form.amount }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT — Payment Form -->
+            <div class="col-lg-6 col-md-12 payment-section p-5 d-flex align-items-center">
+                <div class="payment-form w-100">
+                    <h3 class="fw-semibold mb-4 text-dark text-center">🔒 Secure Payment</h3>
+
+                    <form @submit.prevent="handleFormSubmit" novalidate>
+                        <!-- Name -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Full Name</label>
+                            <input v-model.trim="form.name" type="text" class="form-control form-control-lg"
+                                :class="{ 'is-invalid': errors.name }" />
+                            <div v-if="errors.name" class="invalid-feedback">{{ errors.name }}</div>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Email</label>
+                            <input v-model.trim="form.email" type="email" class="form-control form-control-lg"
+                                :class="{ 'is-invalid': errors.email }" />
+                            <div v-if="errors.email" class="invalid-feedback">{{ errors.email }}</div>
+                        </div>
+
+                        <!-- Phone -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Phone</label>
+                            <input v-model.trim="form.phone" type="text" class="form-control form-control-lg"
+                                :class="{ 'is-invalid': errors.phone }" />
+                            <div v-if="errors.phone" class="invalid-feedback">{{ errors.phone }}</div>
+                        </div>
+
+                        <!-- Card -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Card Details</label>
+                            <div id="card-element"
+                                class="form-control p-2"
+                                :class="{ 'is-invalid': errors.card || errors.amount }"></div>
+                            <div v-if="errors.card" class="text-danger mt-1 small">{{ errors.card }}</div>
+                            <div v-if="errors.amount" class="text-danger mt-1 small">{{ errors.amount }}</div>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="button" @click="handleCancel" class="btn btn-light w-50 py-2">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                class="btn btn-gradient-primary w-50 py-2 d-flex align-items-center justify-content-center"
+                                :disabled="loading">
+                                <div v-if="loading" class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                <span>{{ loading ? "Processing..." : "Confirm Payment" }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
 <style scoped>
+/* ----------- Layout Base ----------- */
 .checkout-wrapper {
     min-height: 100vh;
+    background: linear-gradient(135deg, #f8faff 0%, #eef3ff 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0;
+    padding: 2rem 1rem;
 }
 
-.checkout-container {
+.checkout-card {
+    background: #fff;
+    border-radius: 1.5rem;
+    max-width: 1100px;
     width: 100%;
-    min-height: 90vh;
-    overflow: hidden;
-    display: flex;
-    flex-wrap: wrap;
 }
 
 .summary-section {
-    background-color: #f8faff;
+    background-color: #f9fbff;
+    border-right: 1px solid #e5e9f0;
 }
 
 .payment-section {
     background-color: #ffffff;
 }
 
-.btn-primary {
-    background: #635bff;
-    border-color: #635bff;
+/* ----------- Buttons ----------- */
+.btn-gradient-primary {
+    background: linear-gradient(135deg, #6d5dfc, #4c4eff);
+    color: #fff;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-gradient-primary:hover {
+    background: linear-gradient(135deg, #5b4def, #3f41ff);
+    box-shadow: 0 4px 12px rgba(99, 91, 255, 0.3);
+}
+
+.btn-light {
+    background: #f0f2f7;
+    border: none;
     transition: all 0.25s ease;
 }
 
-.btn-primary:hover {
-    background: #5148e5;
-    border-color: #5148e5;
+.btn-light:hover {
+    background: #e2e6ef;
 }
 
-.col-lg-6+.col-lg-6 {
-    border-left: 1px solid #e0e6ed;
+/* ----------- Typography ----------- */
+.form-label {
+    font-size: 0.95rem;
+    color: #374151;
 }
 
-/* ------------------- Responsive Design ------------------- */
-@media (max-width: 1200px) {
-    .checkout-container {
-        max-width: 950px;
-    }
-
-    .col-lg-6+.col-lg-6 {
-        border-left: 1px solid #e0e6ed;
-    }
+.table th {
+    font-weight: 600;
 }
 
-@media (max-width: 992px) {
-    .summary-section {
-        padding: 3rem 2rem;
-    }
-
-    .payment-section {
-        padding: 3rem 2rem;
-    }
+.text-primary {
+    color: #4c4eff !important;
 }
 
+/* ----------- Inputs ----------- */
+.form-control {
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    transition: all 0.25s ease;
+    font-size: 1rem;
+}
+
+.form-control:focus {
+    border-color: #6d5dfc;
+    box-shadow: 0 0 0 0.2rem rgba(99, 91, 255, 0.2);
+}
+
+/* ----------- Responsive ----------- */
 @media (max-width: 768px) {
-    .checkout-container {
-        flex-direction: column;
-        border-radius: 0;
-        min-height: 100vh;
-    }
-
     .summary-section {
-        border-bottom: 1px solid #e0e6ed;
-        padding: 2.5rem 1.5rem;
+        border-right: none;
+        border-bottom: 1px solid #e5e9f0;
     }
 
-    .payment-section {
-        padding: 2.5rem 1.5rem;
-    }
-
-    .summary-content {
-        max-width: 100%;
-    }
-
-    .btn {
-        font-size: 0.95rem;
-    }
-
-    .col-lg-6+.col-lg-6 {
-        border-left: 0px;
-    }
-}
-
-@media (max-width: 480px) {
-
-    .summary-section,
-    .payment-section {
-        padding: 1.8rem 1.2rem;
-    }
-
-    .checkout-container {
-        min-height: auto;
-        box-shadow: none;
-    }
-
-    .fw-bold.fs-5 {
-        font-size: 1.1rem;
+    .checkout-card {
+        border-radius: 1rem;
     }
 }
 </style>

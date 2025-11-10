@@ -7,6 +7,7 @@ use App\Http\Controllers\OHD\TicketController;
 Route::group(['prefix' => 'ticket'], function () {
     Route::get('{ticketId}/pay-now', [TicketController::class, 'payNow'])->name('ticket.pay-now');
     Route::get('{ticketId}/payment-cancel', [TicketController::class, 'paymentCancel'])->name('ticket.payment-cancel');
+    Route::get('{ticketId}/pay-terminal', [TicketController::class, 'payTerminal'])->name('ticket.pay-terminal');
 
     Route::group(['prefix' => 'stripe'], function () {
         Route::post('create-customer', [TicketController::class, 'createCustomer'])->name('ticket.stripe.create-customer');

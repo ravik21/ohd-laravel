@@ -90,7 +90,7 @@ class StripeAction
         Stripe::setApiKey(config('cashier.secret'));
 
         if (empty($payload['amount_to_capture'])) {
-            return ['error' => "Missing required field: amount", 'code' => 400, 'success' => false];
+            return ['error' => "Missing required field: amount_to_capture", 'code' => 400, 'success' => false];
         }
 
         if (!is_numeric($payload['amount_to_capture']) || intval($payload['amount_to_capture']) <= 0) {
@@ -98,6 +98,13 @@ class StripeAction
         }
 
         return PaymentIntent::retrieve($paymentIntentId)->capture($payload);
+    }
+
+    public function cancelPayment($paymentIntentId)
+    {
+        Stripe::setApiKey(config('cashier.secret'));
+
+        return PaymentIntent::retrieve($paymentIntentId)->cancel();
     }
 
     protected function validatePayload($payload)
