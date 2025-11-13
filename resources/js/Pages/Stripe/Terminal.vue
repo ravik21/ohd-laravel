@@ -88,14 +88,14 @@ async function runFlow() {
     try {
         setStep(0, 'active')
         await sleep(400)
-        await fetchService('connection-token')
+        await withTimeout(fetchService('connection-token'), 10000, 'Failed to get connection token in time')
         setStep(0, 'done')
 
-        const StripeTerminal = await loadStripeTerminal()
+        const StripeTerminal = await withTimeout(loadStripeTerminal(), 10000, 'Stripe Terminal failed to load')
 
         terminal = StripeTerminal.create({
             onFetchConnectionToken: async () => {
-                const token = await fetchService('connection-token')
+                const token = await withTimeout(fetchService('connection-token'), 10000, 'Connection token request timed out')
                 return token.secret
             },
             onUnexpectedReaderDisconnect: async () => {
@@ -104,13 +104,15 @@ async function runFlow() {
         })
 
         setStep(1, 'active')
-        let discovery = null;
+        let discovery = null
 
-        if (import.meta.env.VITE_STRIPE_TERMINAL_SIMULATED === 'true') {
-            discovery = await terminal.discoverReaders({ simulated: true })
-        } else {
-            discovery = await terminal.discoverReaders()
-        }
+        discovery = await withTimeout(
+            import.meta.env.VITE_STRIPE_TERMINAL_SIMULATED === 'true'
+                ? terminal.discoverReaders({ simulated: true })
+                : terminal.discoverReaders(),
+            15000,
+            'Reader discovery timed out'
+        )
 
         if (discovery.error || !discovery.discoveredReaders.length) {
             setStep(1, 'error')
@@ -120,7 +122,11 @@ async function runFlow() {
         setStep(1, 'done')
 
         setStep(2, 'active')
-        const connectResult = await terminal.connectReader(discovery.discoveredReaders[0])
+        const connectResult = await withTimeout(
+            terminal.connectReader(discovery.discoveredReaders[0]),
+            15000,
+            'Reader connection timed out'
+        )
 
         if (connectResult.error) {
             setStep(2, 'error')
@@ -130,10 +136,14 @@ async function runFlow() {
         setStep(2, 'done')
 
         setStep(3, 'active')
-        const paymentIntent = await fetchService('create-terminal-payment-intent', {
-            amount: props.amount,
-            customer_id: props.customerId,
-        })
+        const paymentIntent = await withTimeout(
+            fetchService('create-terminal-payment-intent', {
+                amount: props.amount,
+                customer_id: props.customerId,
+            }),
+            10000,
+            'Payment intent creation timed out'
+        )
         currentPaymentIntentId = paymentIntent.id
         setStep(3, 'done')
 
@@ -149,28 +159,37 @@ async function runFlow() {
                 document.getElementById('cancel-btn').classList.add('d-none')
                 isCollecting = false
                 cancellingPaymentLoader = false
+                await closeWindowWithParam('error')
             } else {
                 await showInfo('No active payment collection to cancel.')
             }
         }
 
-        const collectResult = await terminal.collectPaymentMethod(paymentIntent.client_secret)
+        const collectResult = await withTimeout(
+            terminal.collectPaymentMethod(paymentIntent.client_secret),
+            60000,
+            'Payment collection timed out'
+        )
         isCollecting = false
 
         if (collectResult.error) {
             setStep(4, 'error')
 
-            if (collectResult.error.code != 'canceled') {
+            if (collectResult.error.code !== 'canceled') {
                 throw new Error(collectResult.error.message)
             }
 
-            return false;
+            return false
         }
 
         setStep(4, 'done')
 
         setStep(5, 'active')
-        const processResult = await terminal.processPayment(collectResult.paymentIntent)
+        const processResult = await withTimeout(
+            terminal.processPayment(collectResult.paymentIntent),
+            30000,
+            'Payment processing timed out'
+        )
 
         if (processResult.error) {
             setStep(5, 'error')
@@ -179,17 +198,23 @@ async function runFlow() {
 
         setStep(5, 'done')
 
-        await fetchService(`${processResult.paymentIntent.id}/capture-payment`, { amount_to_capture: props.amount * 100 })
+        await withTimeout(
+            fetchService(`${processResult.paymentIntent.id}/capture-payment`, { amount_to_capture: props.amount * 100 }),
+            10000,
+            'Payment capture timed out'
+        )
+
         setStep(6, 'done')
         document.getElementById('cancel-btn').classList.add('d-none')
 
         await showSuccess('Payment successful!')
+        await closeWindowWithParam('success')
     } catch (err) {
-        console.error(err)
-
         await showError(err.message)
+        await closeWindowWithParam('error')
     }
 }
+
 
 onMounted(runFlow)
 
@@ -198,9 +223,34 @@ async function cancelPayment() {
 
     await cancelCollectPayment()
 }
+
+async function closeWindowWithParam(param) {
+    if (window.opener) {
+        window.opener.postMessage({ status: param }, '*');
+    }
+
+    setTimeout(() => window.close(), 5000);
+}
+
+async function withTimeout(promise, timeoutMs, message = 'Operation timed out') {
+    return new Promise(async (resolve, reject) => {
+        const timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+
+        promise
+            .then(res => {
+                clearTimeout(timeoutId);
+                resolve(res);
+            })
+            .catch(err => {
+                clearTimeout(timeoutId);
+                reject(err);
+            });
+    });
+}
 </script>
 
 <template>
+
     <Head title="Terminal Payment" />
     <div class="checkout-wrapper">
         <div class="checkout-card row shadow-lg rounded-4 overflow-hidden">
@@ -273,8 +323,7 @@ async function cancelPayment() {
                     </ul>
 
                     <!-- Cancel Button -->
-                    <button id="cancel-btn" class="btn btn-danger w-100 px-4 mt-0 d-none"
-                        @click="cancelPayment">
+                    <button id="cancel-btn" class="btn btn-danger w-100 px-4 mt-0 d-none" @click="cancelPayment">
                         <template v-if="cancellingPaymentLoader">
                             <div class="spinner-border spinner-border-sm me-2" role="status"></div> Canceling Payment
                         </template>
